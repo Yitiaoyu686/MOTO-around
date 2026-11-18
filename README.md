@@ -74,38 +74,34 @@ const START_MIN = 6*60; // 出发时间
 
 仓库：`https://github.com/Yitiaoyu686/MOTO-around`
 
-### 方式 A：双击脚本（推荐）
+已配置好的内容（本机直接可用，无需再登录）：
 
-双击 **`scripts/push.bat`**。首次推送会弹出浏览器窗口登录 GitHub，之后就不用再登。
+- remote `origin` = `git@github.com:Yitiaoyu686/MOTO-around.git`（SSH）
+- SSH 密钥：`~/.ssh/id_ed25519`，已授权到 GitHub 账号 `Yitiaoyu686`
+- 仓库级身份：`Yitiaoyu686 <Yitiaoyu686@users.noreply.github.com>`
 
-### 方式 B：手动命令
+日常只要三条命令：
 
-在仓库目录打开 PowerShell：
-
-```powershell
-cd D:\code\youxi
-git init
-git branch -M main
-git remote add origin https://github.com/Yitiaoyu686/MOTO-around.git
+```bash
 git add -A
-git commit -m "docs: 设计文档 + 玩法原型 + 视觉方向"
-git push -u origin main
+git commit -m "说明这次改了什么"
+git push
 ```
 
-> 如果远端已经有 README（GitHub 建仓时勾了初始化），先执行：
-> ```powershell
-git pull --rebase --allow-unrelated-histories origin main
+或直接双击 `scripts/push.bat`。
+
+### 第一次在新机器上配置
+
+```bash
+ssh-keygen -t ed25519 -C "your@email" -f ~/.ssh/id_ed25519
+cat ~/.ssh/id_ed25519.pub      # 把输出粘到 https://github.com/settings/ssh/new
+ssh -T git@github.com           # 看到 Hi <用户名>! 就成功了
+git clone git@github.com:Yitiaoyu686/MOTO-around.git
 ```
-> 再 `git push`。
 
-### 方式 C：GitHub Desktop
+### 部署在线版（GitHub Pages）
 
-打开 GitHub Desktop → File → Add local repository → 选 `D:\code\youxi` → 填提交信息 → Push。
-不会用命令行的话这个最省事。
-
-### 部署在线版（可选）
-
-推送后到仓库 **Settings → Pages → Source 选 `main` / `root`**，等一分钟，然后：
+到仓库 **Settings → Pages → Source 选 `main` / `root`**，保存后等一分钟：
 
 - 原型：`https://yitiaoyu686.github.io/MOTO-around/`
 - 视觉样张：`https://yitiaoyu686.github.io/MOTO-around/docs/style-tile.html`

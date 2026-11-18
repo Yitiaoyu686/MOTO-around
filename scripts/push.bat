@@ -19,7 +19,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-set REPO=https://github.com/Yitiaoyu686/MOTO-around.git
+set REPO=git@github.com:Yitiaoyu686/MOTO-around.git
 set BRANCH=main
 
 if not exist ".git" (
@@ -60,7 +60,7 @@ git push -u origin %BRANCH%
 if errorlevel 1 (
   echo.
   echo  [推送失败] 常见原因：
-  echo    1. 需要登录：首次推送会弹出浏览器窗口，登录 GitHub 即可
+  echo    1. SSH 密钥未授权：ssh -T git@github.com 验证一下
   echo    2. 远端有别人的提交：先执行  git pull --rebase origin %BRANCH%
   echo    3. 分支名不是 main：去仓库页面确认默认分支名
 )
