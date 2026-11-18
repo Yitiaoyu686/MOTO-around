@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>视觉方向 · 纸图 Paper Atlas</title>
+<style>
+  :root{
+    --paper:#F2EAD9; --paper2:#E8DECA; --paper3:#D9CCB2;
+    --ink:#2B2622; --ink2:#5A514A; --ink3:#A79B8A;
+    --nat:#C4562F; --prov:#2E6F6B; --local:#8A7F6D;
+    --ok:#4F7F6B; --danger:#B8422F;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif;
+    padding:40px 24px 80px;
+    background-image:
+      radial-gradient(circle at 18% 12%, #ffffff70 0%, transparent 55%),
+      radial-gradient(circle at 82% 78%, #d9ccb280 0%, transparent 60%);
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  header{margin-bottom:44px}
+  .kicker{font-size:11px;letter-spacing:.32em;color:var(--ink3);margin-bottom:14px}
+  h1{
+    font-family:"Songti SC","STSong","SimSun",serif;
+    font-size:42px;letter-spacing:.06em;margin:0 0 16px;font-weight:700;
+  }
+  header p{font-family:"Kaiti SC","STKaiti","KaiTi",serif;font-size:16px;color:var(--ink2);margin:0;line-height:1.9}
+  section{margin:56px 0}
+  h2{
+    font-family:"Songti SC","STSong","SimSun",serif;
+    font-size:15px;letter-spacing:.22em;font-weight:600;margin:0 0 18px;
+    padding-bottom:9px;border-bottom:1px solid #2b26221f;
+  }
+  h2 em{font-style:normal;color:var(--ink3);letter-spacing:.06em;font-size:12px;margin-left:12px}
+  .cap{font-family:"Kaiti SC","STKaiti","KaiTi",serif;font-size:13px;color:var(--ink2);
+    margin:12px 2px 0;line-height:1.85}
+  .frame{
+    background:var(--paper2);
+    border:1px solid #2b26221f;
+    border-radius:4px;
+    padding:0;overflow:hidden;
+    box-shadow:0 1px 0 #fff6 inset, 0 10px 24px -14px #2b262255;
+  }
+  .frame canvas{display:block;width:100%;height:420px}
+  .tri{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .tri .frame canvas{height:250px}
+
+  #swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px}
+  .sw{border:1px solid #2b26221f;border-radius:4px;overflow:hidden;background:var(--paper2)}
+  .sw i{display:block;height:52px}
+  .sw div{padding:7px 9px;font-size:10px;line-height:1.5}
+  .sw b{display:block;font-family:ui-monospace,"Roboto Mono",monospace;font-size:10px;color:var(--ink2);font-weight:500}
+  .sw span{color:var(--ink3);font-size:9.5px}
+
+  .uirow{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+  .cardpaper{
+    background:var(--paper2);border:1px solid #2b262199;border-radius:4px;
+    padding:18px 18px 14px;box-shadow:0 14px 30px -18px #2b2622aa;
+  }
+  .stamp{
+    display:inline-block;font-family:"Kaiti SC","KaiTi",serif;font-size:11px;
+    color:var(--ok);border:1.5px solid var(--ok);border-radius:2px;
+    padding:2px 8px;transform:rotate(-2.4deg);opacity:.9;margin-bottom:12px;
+    letter-spacing:.1em;
+  }
+  .cardpaper h3{
+    font-family:"Songti SC","STSong","SimSun",serif;font-size:19px;
+    margin:0 0 10px;letter-spacing:.03em;
+  }
+  .cardpaper p{
+    font-family:"Kaiti SC","STKaiti","KaiTi",serif;font-size:14px;
+    line-height:1.95;color:var(--ink2);margin:0 0 16px;
+  }
+  .opt{
+    display:flex;align-items:center;gap:10px;
+    border:1px solid #2b262166;border-radius:3px;
+    padding:9px 11px;margin-bottom:7px;font-size:13px;cursor:pointer;
+    transition:background .15s,border-color .15s;
+  }
+  .opt:hover{background:#2b26220d;border-color:var(--ink)}
+  .opt .k{
+    width:17px;height:17px;flex:none;border:1px solid var(--ink3);
+    border-radius:2px;font-size:10px;display:flex;align-items:center;
+    justify-content:center;color:var(--ink2);
+    font-family:ui-monospace,monospace;
+  }
+  .opt .nt{margin-left:auto;font-size:10.5px;color:var(--ink3);font-family:ui-monospace,monospace}
+
+  .ruler{position:relative;height:16px;margin:6px 0 4px}
+  .ruler .base{position:absolute;left:0;right:0;top:8px;height:1px;background:#2b26221f}
+  .ruler .done{position:absolute;left:0;top:7px;height:3px;width:38%;background:var(--nat)}
+  .ruler i{position:absolute;top:3px;width:1px;height:5px;background:var(--ink3)}
+  .ruler .lab{display:flex;justify-content:space-between;font-size:10px;color:var(--ink3);
+    font-family:ui-monospace,monospace;margin-top:4px}
+
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .btn{
+    font-family:inherit;font-size:13px;padding:9px 20px;background:transparent;
+    color:var(--ink);border:1px solid #2b262166;border-radius:3px;cursor:pointer;
+    transition:.15s;letter-spacing:.04em;
+  }
+  .btn:hover{background:#2b26220d;border-color:var(--ink)}
+  .btn.solid{background:var(--nat);border-color:var(--nat);color:var(--paper)}
+  .btn.solid:hover{background:#a8471f;border-color:#a8471f}
+
+  .book{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-top:6px}
+  .slot{
+    aspect-ratio:1;border:1px dashed #2b262255;border-radius:3px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:9.5px;color:var(--ink3);font-family:"Kaiti SC",serif;
+  }
+  .slot.got{
+    border:1.4px solid var(--ok);color:var(--ok);
+    transform:rotate(-2deg);font-size:10.5px;letter-spacing:.05em;
+  }
+  .legend{font-size:11px;color:var(--ink3);line-height:2;margin-top:14px}
+  .legend code{font-family:ui-monospace,monospace;color:var(--ink2)}
+  @media(max-width:760px){
+    .tri,.uirow{grid-template-columns:1fr}
+    h1{font-size:32px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">视 觉 方 向 · v1.0</div>
+    <h1>纸图 · Paper Atlas</h1>
+    <p>一张被翻旧了的中国公路地图，上面有人用铅笔标了路线、盖了章、折了角。<br>
+       像一本旅行手账，不像一款手游。</p>
+  </header>
+
+  <section>
+    <h2>色板 <em>纸 · 墨 · 地图 · 状态</em></h2>
+    <div id="swatches"></div>
+    <p class="cap">永远不用纯白和纯黑：白用「纸」，黑用「墨」。层次靠明度，不靠饱和度。</p>
+  </section>
+
+  <section>
+    <h2>地图层 <em>全国 / 区域</em></h2>
+    <div class="frame"><canvas id="mapDemo"></canvas></div>
+    <p class="cap">
+      摊开的纸、顺时针倾斜 1.2°、折痕、等高线、三级线宽的路网、朱红的已走路线（铅笔虚线）、
+      墨色的计划路线（点线）、盖章。地名都有纸色衬底，压在任何底色上都读得清。
+    </p>
+  </section>
+
+  <section>
+    <h2>路段层 <em>同一套颜色，三种光</em></h2>
+    <div class="tri">
+      <div class="frame"><canvas class="roadDemo" data-mode="day"></canvas></div>
+      <div class="frame"><canvas class="roadDemo" data-mode="dusk"></canvas></div>
+      <div class="frame"><canvas class="roadDemo" data-mode="night"></canvas></div>
+    </div>
+    <p class="cap">
+      地平线固定在 0.72 高度，天空占七成——这是空旷感的来源。风景用平涂色块，不上渐变；
+      速度感只靠虚线移动、近景树和 1–2px 的颠簸，不靠模糊和镜头拉伸。
+    </p>
+  </section>
+
+  <section>
+    <h2>UI 组件 <em>卡片 · 刻度 · 收集册</em></h2>
+    <div class="uirow">
+      <div class="cardpaper">
+        <div class="stamp">里 程 碑</div>
+        <h3>到达 折多山</h3>
+        <p>垭口 4298m · 已骑行 452 km。<br>
+           风大得像有人在推你，经幡在头顶乱响。远处的山脊一层一层铺到天边。</p>
+        <div class="opt"><span class="k">1</span><span>停下来拍张照</span><span class="nt">照片 +1 · 10 分</span></div>
+        <div class="opt"><span class="k">2</span><span>加件衣服，歇一会儿</span><span class="nt">体力 +8 · 10 分</span></div>
+        <div class="opt"><span class="k">3</span><span>不停，直接下山</span><span class="nt">—</span></div>
+      </div>
+
+      <div class="cardpaper">
+        <h3 style="font-size:13px;letter-spacing:.18em;color:var(--ink2)">今 日 进 度</h3>
+        <div class="ruler">
+          <div class="base"></div><div class="done"></div>
+          <i style="left:0"></i><i style="left:15%"></i><i style="left:30%"></i>
+          <i style="left:45%"></i><i style="left:60%"></i><i style="left:75%"></i><i style="left:90%"></i>
+        </div>
+        <div class="lab"><span>成都</span><span>雅安</span><span>康定</span><span>拉萨</span></div>
+
+        <h3 style="font-size:13px;letter-spacing:.18em;color:var(--ink2);margin-top:24px">壳 上 的 章</h3>
+        <div class="book">
+          <div class="slot got">二郎山</div><div class="slot got">泸定</div>
+          <div class="slot got">康定</div><div class="slot got">折多山</div>
+          <div class="slot">新都桥</div><div class="slot">理塘</div>
+          <div class="slot">巴塘</div><div class="slot">72拐</div>
+          <div class="slot">然乌</div><div class="slot">鲁朗</div>
+          <div class="slot">林芝</div><div class="slot">拉萨</div>
+        </div>
+
+        <div class="btnrow">
+          <button class="btn solid">出发</button>
+          <button class="btn">看看天气</button>
+          <button class="btn">改路线</button>
+        </div>
+      </div>
+    </div>
+    <p class="cap">
+      卡片就是一小张纸：1px 墨线、4px 小圆角、一点点投影。按钮是铅笔框，悬停时线变深。
+      不用发光、不用渐变、不用大圆角。
+    </p>
+  </section>
+
+  <section>
+    <h2>符号系统 <em>几何 + 点表示等级</em></h2>
+    <div class="frame"><canvas id="iconDemo" style="height:150px"></canvas></div>
+    <p class="cap">
+      全部 2px 描边、几何形状。服务等级不换图标，只画点：加油 1 级 = 一点，3 级 = 三点。
+      比画三个不同的图标清楚得多，而且能直接参与数值表达。
+    </p>
+  </section>
+
+  <div class="legend">
+    三个字体三种角色：<code>宋体</code> 用于地图与标题 · <code>楷体</code> 用于心情与事件正文 · <code>黑体 / 等宽</code> 用于操作与数字。<br>
+    所有纹理为程序化生成：纸纹噪点 + 固定 seed 的抖动描边 —— 见 <code>docs/art-direction.md</code> §10。
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const C = {
+  paper:'#F2EAD9', paper2:'#E8DECA', paper3:'#D9CCB2',
+  ink:'#2B2622', ink2:'#5A514A', ink3:'#A79B8A',
+  landLow:'#EDE3CE', landMid:'#E2D4B7', landHigh:'#D8C5A0', snow:'#F0EBE0',
+  water:'#A8C4C9', waterDeep:'#8FAFB6',
+  nat:'#C4562F', prov:'#2E6F6B', local:'#8A7F6D', poi:'#B8572A',
+  danger:'#B8422F', ok:'#4F7F6B', fuel:'#D99A3A', stam:'#6E9C6B'
+};
+
+/* ---------- 色板 ---------- */
+const SWATCHES = [
+  ['paper','纸','#F2EAD9'],['paper-2','纸 · 次级','#E8DECA'],['paper-3','纸 · 凹陷','#D9CCB2'],
+  ['ink','墨','#2B2622'],['ink-2','墨 · 次要','#5A514A'],['ink-3','墨 · 极淡','#A79B8A'],
+  ['hill','丘陵','#E2D4B7'],['high','高原','#D8C5A0'],['water','水体','#A8C4C9'],
+  ['G-road','国道','#C4562F'],['S-road','省道','#2E6F6B'],['local','县道','#8A7F6D'],
+  ['poi','景点','#B8572A'],['ok','完成','#4F7F6B'],['danger','警示','#B8422F'],['fuel','油量','#D99A3A']
+];
+(function(){
+  const box = document.getElementById('swatches');
+  SWATCHES.forEach(function(s){
+    const d = document.createElement('div');
+    d.className = 'sw';
+    d.innerHTML = '<i style="background:'+s[2]+'"></i><div><b>'+s[2].toUpperCase()+'</b><span>'+s[1]+'</span></div>';
+    box.appendChild(d);
+  });
+})();
+
+/* ---------- 工具 ---------- */
+function mount(cv, draw){
+  function run(){
+    const rect = cv.getBoundingClientRect();
+    if(!rect.width) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width  = Math.round(rect.width  * dpr);
+    cv.height = Math.round(rect.height * dpr);
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    try { draw(ctx, rect.width, rect.height); } catch(e){ console.error(e); }
+  }
+  run();
+  window.addEventListener('resize', run);
+}
+
+/* 固定 seed 的伪随机：必须固定，否则线条会逐帧闪烁 */
+function rng(seed){
+  let s = seed || 1;
+  return function(){
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
+/* 手绘抖动折线 */
+function jpoly(ctx, pts, seed, amp){
+  amp = amp === undefined ? 0.7 : amp;
+  const r = rng(seed);
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for(let i=0;i<pts.length-1;i++){
+    const a = pts[i], b = pts[i+1];
+    const seg = 5;
+    for(let k=1;k<=seg;k++){
+      const t = k/seg;
+      const x = a[0] + (b[0]-a[0])*t + (r()-0.5)*amp*2;
+      const y = a[1] + (b[1]-a[1])*t + (r()-0.5)*amp*2;
+      ctx.lineTo(x,y);
+    }
+  }
+  ctx.stroke();
+}
+
+/* 纸纹 pattern（按 context 缓存） */
+const paperPatterns = new WeakMap();
+function getPaperPattern(ctx){
+  if(paperPatterns.has(ctx)) return paperPatterns.get(ctx);
+  const p = document.createElement('canvas');
+  p.width = p.height = 160;
+  const pc = p.getContext('2d');
+  const img = pc.createImageData(160,160);
+  for(let i=0;i<img.data.length;i+=4){
+    const v = Math.random();
+    const n = v < 0.55 ? 40 : 250;
+    img.data[i]   = n;
+    img.data[i+1] = n * 0.96;
+    img.data[i+2] = n * 0.88;
+    img.data[i+3] = v * 26;
+  }
+  pc.putImageData(img,0,0);
+  const pat = ctx.createPattern(p,'repeat');
+  paperPatterns.set(ctx, pat);
+  return pat;
+}
+function paperize(ctx, W, H){
+  ctx.save();
+  ctx.globalAlpha = 0.45;
+  ctx.fillStyle = getPaperPattern(ctx);
+  ctx.fillRect(0,0,W,H);
+  ctx.restore();
+}
+
+/* 文字衬底（halo） */
+function haloText(ctx, text, x, y, opts){
+  opts = opts || {};
+  ctx.save();
+  ctx.font = opts.font || '600 12px "Songti SC","STSong",SimSun,serif';
+  ctx.textAlign = opts.align || 'left';
+  ctx.textBaseline = opts.baseline || 'alphabetic';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = opts.halo === undefined ? 4 : opts.halo;
+  ctx.strokeStyle = C.paper;
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = opts.color || C.ink;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+/* ================= 地图层 ================= */
+mount(document.getElementById('mapDemo'), function(ctx,W,H){
+  ctx.fillStyle = C.landLow;
+  ctx.fillRect(0,0,W,H);
+
+  /* 纸倾斜 + 折痕 */
+  ctx.save();
+  ctx.translate(W/2, H/2);
+  ctx.rotate(-0.021);
+  ctx.translate(-W/2, -H/2);
+
+  /* 高原色带（背景） */
+  ctx.fillStyle = C.landMid;
+  ctx.beginPath();
+  ctx.moveTo(-40, H*0.52);
+  ctx.bezierCurveTo(W*0.25, H*0.34, W*0.55, H*0.62, W+40, H*0.40);
+  ctx.lineTo(W+40, H+40); ctx.lineTo(-40, H+40); ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = C.landHigh;
+  ctx.beginPath();
+  ctx.moveTo(W*0.30, H+40);
+  ctx.bezierCurveTo(W*0.46, H*0.66, W*0.72, H*0.80, W+40, H*0.56);
+  ctx.lineTo(W+40, H+40); ctx.closePath();
+  ctx.fill();
+
+  /* 等高线 */
+  ctx.save();
+  ctx.strokeStyle = 'rgba(167,155,138,.30)';
+  ctx.lineWidth = 1;
+  for(let k=0;k<9;k++){
+    ctx.beginPath();
+    for(let x=-20;x<=W+20;x+=12){
+      const y = H*0.46 + k*13
+        + Math.sin((x/150) + k*0.55)*9
+        + Math.sin((x/61) + k*1.3)*4;
+      if(x===-20) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  /* 河 */
+  ctx.strokeStyle = C.water;
+  ctx.lineWidth = 7;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(W*0.02, H*0.20);
+  ctx.bezierCurveTo(W*0.30, H*0.34, W*0.20, H*0.62, W*0.52, H*0.74);
+  ctx.bezierCurveTo(W*0.80, H*0.84, W*0.80, H*0.62, W*1.02, H*0.70);
+  ctx.stroke();
+
+  /* 省界（点划） */
+  ctx.save();
+  ctx.setLineDash([9,6]);
+  ctx.strokeStyle = 'rgba(167,155,138,.55)';
+  ctx.lineWidth = 1;
+  jpoly(ctx, [[W*0.05,H*0.86],[W*0.28,H*0.72],[W*0.44,H*0.930],[W*0.68,H*0.80],[W*0.95,H*0.90]], 7, 0.6);
+  ctx.restore();
+
+  /* 路网：国道 / 省道 / 县道 */
+  const g318 = [[W*0.06,H*0.74],[W*0.22,H*0.68],[W*0.34,H*0.60],[W*0.44,H*0.52],
+                [W*0.55,H*0.46],[W*0.66,H*0.38],[W*0.78,H*0.32],[W*0.93,H*0.26]];
+  const g109 = [[W*0.80,H*0.92],[W*0.74,H*0.74],[W*0.78,H*0.56],[W*0.86,H*0.42],[W*0.93,H*0.26]];
+  const s1   = [[W*0.34,H*0.60],[W*0.30,H*0.40],[W*0.26,H*0.22]];
+  const l1   = [[W*0.55,H*0.46],[W*0.60,H*0.62],[W*0.56,H*0.88]];
+
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  ctx.strokeStyle = C.local; ctx.lineWidth = 1.2;
+  jpoly(ctx, l1, 21, 0.6);
+  ctx.strokeStyle = C.prov; ctx.lineWidth = 2.2;
+  jpoly(ctx, s1, 33, 0.7);
+  ctx.strokeStyle = C.nat; ctx.lineWidth = 3.2;
+  jpoly(ctx, g318, 11, 0.8);
+  jpoly(ctx, g109, 17, 0.8);
+
+  /* 计划路线：墨色点线 */
+  ctx.save();
+  ctx.setLineDash([1,7]);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 2.4;
+  jpoly(ctx, [[W*0.93,H*0.26],[W*0.80,H*0.44],[W*0.62,H*0.52],[W*0.40,H*0.56]], 51, 0.7);
+  ctx.restore();
+
+  /* 已走路线：朱红虚线（铅笔） */
+  ctx.save();
+  ctx.setLineDash([8,6]);
+  ctx.strokeStyle = C.danger;
+  ctx.lineWidth = 2.6;
+  jpoly(ctx, g318.slice(0,5), 61, 0.9);
+  ctx.restore();
+
+  /* 城市点 */
+  const cities = [
+    ['成都', 0.06, 0.74, 'big'],
+    ['康定', 0.34, 0.60, 'mid'],
+    ['折多山', 0.44, 0.52, 'pass'],
+    ['新都桥', 0.55, 0.46, 'mid'],
+    ['理塘', 0.66, 0.38, 'mid'],
+    ['巴塘', 0.78, 0.32, 'mid'],
+    ['拉萨', 0.93, 0.26, 'big']
+  ];
+  cities.forEach(function(c){
+    const x = W*c[1], y = H*c[2];
+    if(c[3]==='pass'){
+      ctx.fillStyle = C.paper;
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x, y-5); ctx.lineTo(x+5, y+3); ctx.lineTo(x-5, y+3);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }else{
+      const r = c[3]==='big' ? 5 : 3.4;
+      ctx.fillStyle = C.paper;
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.arc(x,y,r,0,6.2832); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = C.ink;
+      ctx.beginPath(); ctx.arc(x,y,r*0.42,0,6.2832); ctx.fill();
+    }
+    haloText(ctx, c[0], x+9, y+4, {font:'600 12px "Songti SC","STSong",SimSun,serif'});
+  });
+
+  /* 景点星标 */
+  function star(x,y,r){
+    ctx.beginPath();
+    for(let i=0;i<10;i++){
+      const a = -Math.PI/2 + i*Math.PI/5;
+      const rr = i%2 ? r*0.45 : r;
+      ctx[i?'lineTo':'moveTo'](x+Math.cos(a)*rr, y+Math.sin(a)*rr);
+    }
+    ctx.closePath();
+  }
+  [[0.52,0.63],[0.70,0.44],[0.86,0.60]].forEach(function(p){
+    const x=W*p[0], y=H*p[1];
+    star(x,y,6);
+    ctx.fillStyle = C.poi; ctx.globalAlpha = 0.9; ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.2; ctx.stroke();
+  });
+
+  /* 你在这里 */
+  const hereX = W*0.40, hereY = H*0.555;
+  ctx.strokeStyle = C.nat; ctx.globalAlpha = 0.35; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(hereX, hereY, 13, 0, 6.2832); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = C.nat;
+  ctx.beginPath(); ctx.arc(hereX, hereY, 5, 0, 6.2832); ctx.fill();
+  ctx.strokeStyle = C.paper; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(hereX, hereY, 5, 0, 6.2832); ctx.stroke();
+  haloText(ctx, '你在 康定', hereX-30, hereY+30, {
+    font:'600 11px "Kaiti SC","KaiTi",serif', color:C.nat, align:'center'
+  });
+
+  /* 盖章 */
+  ctx.save();
+  ctx.translate(W*0.34, H*0.60);
+  ctx.rotate(-0.06);
+  ctx.strokeStyle = C.ok; ctx.lineWidth = 1.8;
+  ctx.globalAlpha = 0.85;
+  ctx.strokeRect(-17,-9,34,18);
+  ctx.fillStyle = C.ok;
+  ctx.font = '600 10px "Kaiti SC","KaiTi",serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('已 抵', 0, 0);
+  ctx.restore();
+
+  /* 折痕 */
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(43,38,34,.10)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(W*0.5,0); ctx.lineTo(W*0.5,H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,H*0.5); ctx.lineTo(W,H*0.5); ctx.stroke();
+  ctx.restore();
+
+  paperize(ctx, W, H);
+
+  /* 内阴影 */
+  const vg = ctx.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,H*0.95);
+  vg.addColorStop(0,'rgba(43,38,34,0)');
+  vg.addColorStop(1,'rgba(43,38,34,.10)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0,0,W,H);
+
+  haloText(ctx, 'G318', W*0.245, H*0.655, {
+    font:'700 10px ui-monospace,monospace', color:C.nat
+  });
+});
+
+/* ================= 路段层 ================= */
+const ROADPAL = {
+  day:{ skyTop:'#9BC3D6', skyBot:'#E9DCC2', far:'#9EADB6', mid:'#7C8F86',
+        near:'#55685C', road:'#4A4741', line:'#EED9A4', sun:'#FFF3D6', tint:0 },
+  dusk:{ skyTop:'#4A5A82', skyBot:'#E9A574', far:'#7A6E82', mid:'#5A5266',
+        near:'#33303F', road:'#2E2A2C', line:'#D8B073', sun:'#FFD2A0', tint:0.10 },
+  night:{ skyTop:'#121A2B', skyBot:'#1E2A42', far:'#1A2436', mid:'#131C2B',
+        near:'#0C121C', road:'#14161B', line:'#8A7A55', sun:'#EAF0FF', tint:0.55 }
+};
+
+function drawMoto(ctx, x, groundY, s){
+  ctx.save();
+  ctx.translate(x, groundY);
+  ctx.scale(s, s);
+  const R = 15;
+
+  ctx.fillStyle = 'rgba(43,38,34,.22)';
+  ctx.beginPath(); ctx.ellipse(0, 1, 52, 7, 0, 0, 6.2832); ctx.fill();
+
+  /* 轮 */
+  ctx.strokeStyle = '#1A1E26'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(-34,-R,R-2,0,6.2832); ctx.stroke();
+  ctx.beginPath(); ctx.arc( 36,-R,R-2,0,6.2832); ctx.stroke();
+  ctx.strokeStyle = '#8E97A6'; ctx.lineWidth = 1.3;
+  for(let i=0;i<5;i++){
+    const a = i*1.2 + 0.3;
+    ctx.beginPath(); ctx.moveTo(-34,-R);
+    ctx.lineTo(-34+Math.cos(a)*(R-4), -R+Math.sin(a)*(R-4)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(36,-R);
+    ctx.lineTo(36+Math.cos(a)*(R-4), -R+Math.sin(a)*(R-4)); ctx.stroke();
+  }
+
+  /* 车架 */
+  ctx.strokeStyle = '#8F99A8'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-34,-R); ctx.lineTo(-8,-26); ctx.lineTo(20,-28); ctx.lineTo(36,-R);
+  ctx.stroke();
+
+  ctx.fillStyle = '#4C5566';
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-10,-27,24,17,4) : ctx.rect(-10,-27,24,17); ctx.fill();
+
+  /* 行李 */
+  ctx.fillStyle = '#3F6B8A';
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-46,-50,22,17,4) : ctx.rect(-46,-50,22,17); ctx.fill();
+
+  /* 座垫 */
+  ctx.fillStyle = '#20242C';
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-28,-46,28,10,4) : ctx.rect(-28,-46,28,10); ctx.fill();
+
+  /* 油箱 */
+  ctx.fillStyle = '#C4562F';
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-2,-46,32,17,7) : ctx.rect(-2,-46,32,17); ctx.fill();
+
+  /* 前叉 */
+  ctx.strokeStyle = '#AEB6C4'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(31,-42); ctx.lineTo(36,-R); ctx.stroke();
+
+  /* 骑手 */
+  ctx.strokeStyle = '#2B394B'; ctx.lineWidth = 10; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-14,-48); ctx.lineTo(4,-66); ctx.stroke();
+  ctx.lineWidth = 7;
+  ctx.beginPath(); ctx.moveTo(2,-62); ctx.lineTo(24,-54); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-12,-48); ctx.lineTo(2,-36); ctx.lineTo(9,-27); ctx.stroke();
+
+  /* 头盔 */
+  ctx.fillStyle = '#E9EEF7';
+  ctx.beginPath(); ctx.arc(10,-74,10,0,6.2832); ctx.fill();
+  ctx.fillStyle = '#1C2430';
+  ctx.beginPath(); ctx.arc(15,-74,5.4,0,6.2832); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawRidge(ctx, W, H, baseY, amp, freq, phase, color){
+  ctx.beginPath();
+  ctx.moveTo(0,H);
+  for(let x=0;x<=W;x+=6){
+    const y = baseY
+      - (Math.sin(x*freq + phase)*0.62 + Math.sin(x*freq*2.6 + phase*2.1)*0.38)*amp
+      - amp*0.42;
+    ctx.lineTo(x,y);
+  }
+  ctx.lineTo(W,H);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+document.querySelectorAll('.roadDemo').forEach(function(cv){
+  mount(cv, function(ctx,W,H){
+    const mode = cv.dataset.mode;
+    const P = ROADPAL[mode];
+    const roadY = H*0.72;
+
+    /* 天空 */
+    const g = ctx.createLinearGradient(0,0,0,roadY+8);
+    g.addColorStop(0, P.skyTop);
+    g.addColorStop(1, P.skyBot);
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,roadY+10);
+
+    /* 日月（平涂圆，不加辉光） */
+    const sx = W*0.74, sy = mode==='night' ? H*0.16 : H*0.22;
+    ctx.fillStyle = P.sun;
+    ctx.beginPath();
+    if(mode==='night'){
+      ctx.arc(sx, sy, H*0.035, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = P.skyTop;
+      ctx.beginPath(); ctx.arc(sx+H*0.018, sy-H*0.012, H*0.032, 0, 6.2832); ctx.fill();
+    }else{
+      ctx.arc(sx, sy, H*0.045, 0, 6.2832); ctx.fill();
+    }
+
+    /* 云：平涂条块 */
+    ctx.fillStyle = mode==='night' ? 'rgba(40,52,78,.55)' : 'rgba(255,255,255,.30)';
+    const clouds = [[0.12,0.16,1.0],[0.30,0.10,0.7],[0.56,0.20,1.2],[0.80,0.13,0.8]];
+    clouds.forEach(function(c){
+      const x = W*c[0], y = H*c[1], s = H*0.045*c[2];
+      ctx.beginPath();
+      ctx.ellipse(x, y, s*2.0, s*0.52, 0, 0, 6.2832);
+      ctx.ellipse(x+s*0.9, y-s*0.30, s*1.2, s*0.46, 0, 0, 6.2832);
+      ctx.fill();
+    });
+
+    /* 三层山 */
+    drawRidge(ctx, W, H, roadY-H*0.03, H*0.10, 0.011, 1.4, P.far);
+    drawRidge(ctx, W, H, roadY+H*0.005, H*0.072, 0.019, 3.1, P.mid);
+    drawRidge(ctx, W, H, roadY+H*0.030, H*0.040, 0.030, 5.7, P.near);
+
+    /* 树的剪影 */
+    ctx.fillStyle = P.near;
+    for(let i=0;i<7;i++){
+      const x = W*(0.07 + i*0.155);
+      const hh = H*0.055;
+      ctx.beginPath();
+      ctx.moveTo(x, roadY+H*0.030);
+      ctx.lineTo(x-hh*0.40, roadY+H*0.030);
+      ctx.lineTo(x, roadY+H*0.030-hh*1.5);
+      ctx.lineTo(x+hh*0.40, roadY+H*0.030);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    /* 路面 */
+    ctx.fillStyle = P.road;
+    ctx.fillRect(0, roadY, W, H-roadY);
+    ctx.fillStyle = 'rgba(242,234,217,.16)';
+    ctx.fillRect(0, roadY, W, 1.5);
+    ctx.fillStyle = 'rgba(242,234,217,.13)';
+    ctx.fillRect(0, roadY+(H-roadY)*0.14, W, 1.5);
+
+    /* 黄虚线 */
+    ctx.fillStyle = P.line;
+    ctx.globalAlpha = mode==='night' ? 0.45 : 0.75;
+    const dash = 46, ly = roadY+(H-roadY)*0.42;
+    for(let x=0;x<W;x+=dash){
+      ctx.fillRect(x, ly, dash*0.5, 2.6);
+    }
+    ctx.globalAlpha = 1;
+
+    /* 摩托 */
+    const s = Math.min(1, H/420);
+    drawMoto(ctx, W*0.30, roadY+(H-roadY)*0.62, s);
+
+    /* 夜间压暗 + 车灯 */
+    if(mode==='night'){
+      ctx.fillStyle = 'rgba(10,14,26,.30)';
+      ctx.fillRect(0,0,W,H);
+      const lx = W*0.30+40*s, lyy = roadY+(H-roadY)*0.62-44*s;
+      const lg = ctx.createRadialGradient(lx,lyy,3,lx,lyy,H*0.34);
+      lg.addColorStop(0,'rgba(255,224,163,.40)');
+      lg.addColorStop(1,'rgba(255,224,163,0)');
+      ctx.fillStyle = lg;
+      ctx.fillRect(0,0,W,H);
+    }
+
+    /* 纸纹 */
+    paperize(ctx, W, H);
+
+    /* 标注 */
+    const label = {day:'白 天', dusk:'黄 昏', night:'夜 间'}[mode];
+    ctx.font = '600 11px "Songti SC","STSong",serif';
+    ctx.fillStyle = mode==='night' ? C.paper : C.ink;
+    ctx.globalAlpha = 0.75;
+    ctx.textAlign = 'left';
+    ctx.fillText(label, 14, 24);
+    ctx.globalAlpha = 1;
+  });
+});
+
+/* ================= 符号 ================= */
+mount(document.getElementById('iconDemo'), function(ctx,W,H){
+  ctx.fillStyle = C.paper;
+  ctx.fillRect(0,0,W,H);
+
+  const items = [
+    ['加油', 3], ['住宿', 2], ['修车', 2], ['食物', 1],
+    ['医疗', 1], ['垭口', 0], ['景点', 0], ['露营', 0]
+  ];
+
+  const n = items.length;
+  const gap = Math.min(104, W/n);
+  const startX = (W - gap*n)/2 + gap/2;
+  const cy = H*0.44;
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  items.forEach(function(it, i){
+    const x = startX + i*gap;
+    ctx.save();
+    ctx.translate(x, cy);
+    ctx.strokeStyle = C.ink;
+    ctx.fillStyle = 'rgba(43,38,34,.06)';
+    ctx.lineWidth = 1.8;
+
+    const name = it[0];
+    if(name==='加油'){
+      ctx.beginPath(); ctx.rect(-8,-13,15,26); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(7,-8); ctx.lineTo(12,-8); ctx.lineTo(12,10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-4,-6); ctx.lineTo(-4,4); ctx.stroke();
+    }else if(name==='住宿'){
+      ctx.beginPath(); ctx.moveTo(-13,6); ctx.lineTo(-13,-10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-13,0); ctx.lineTo(13,0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-13,6); ctx.lineTo(13,6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(9,-9); ctx.arc(9,-9,0,0,0); ctx.stroke();
+      ctx.beginPath(); ctx.arc(9,-5,5,Math.PI,0); ctx.stroke();
+    }else if(name==='修车'){
+      ctx.beginPath(); ctx.arc(-7,-6,6,0.6,6.0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-3,-2); ctx.lineTo(10,11); ctx.stroke();
+      ctx.beginPath(); ctx.arc(10,11,3.6,0,6.2832); ctx.stroke();
+    }else if(name==='食物'){
+      ctx.beginPath(); ctx.arc(0,-2,11,0,Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-11,2); ctx.lineTo(11,2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-13,-8); ctx.lineTo(13,-10); ctx.stroke();
+    }else if(name==='医疗'){
+      ctx.beginPath(); ctx.rect(-10,-10,20,20); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-5,0); ctx.lineTo(5,0); ctx.moveTo(0,-5); ctx.lineTo(0,5); ctx.stroke();
+    }else if(name==='垭口'){
+      ctx.beginPath(); ctx.moveTo(0,-11); ctx.lineTo(13,9); ctx.lineTo(-13,9); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-17,3); ctx.lineTo(17,3); ctx.stroke();
+    }else if(name==='景点'){
+      ctx.beginPath();
+      for(let k=0;k<10;k++){
+        const a = -Math.PI/2 + k*Math.PI/5;
+        const r = k%2 ? 5 : 12;
+        const px = Math.cos(a)*r, py = Math.sin(a)*r;
+        if(k===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }else if(name==='露营'){
+      ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(13,10); ctx.lineTo(-13,10); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(4,10); ctx.stroke();
+    }
+    ctx.restore();
+
+    /* 文字 */
+    ctx.font = '11px "Songti SC","STSong",serif';
+    ctx.fillStyle = C.ink2;
+    ctx.textAlign = 'center';
+    ctx.fillText(it[0], x, H*0.78);
+
+    /* 服务等级：点 */
+    if(it[1] > 0){
+      const lv = it[1];
+      for(let d=0; d<lv; d++){
+        ctx.beginPath();
+        ctx.arc(x - (lv-1)*4 + d*8, H*0.88, 2, 0, 6.2832);
+        ctx.fillStyle = C.nat;
+        ctx.fill();
+      }
+    }
+  });
+
+  paperize(ctx, W, H);
+});
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>摩旅 · 川藏线</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+    user-select:none;-webkit-user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;background:#05070d;color:#e9eef7;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+  #stage{position:fixed;inset:0;overflow:hidden}
+  canvas{position:absolute;inset:0;display:block}
+
+  /* ---------- HUD ---------- */
+  #hud{position:absolute;inset:0;pointer-events:none;font-size:13px;letter-spacing:.02em}
+  .top{position:absolute;top:0;left:0;right:0;display:flex;gap:16px;align-items:flex-start;
+    padding:14px 18px 26px;background:linear-gradient(#000000aa,#00000000)}
+  .trip{flex:1;min-width:0}
+  .trip .nums{display:flex;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums}
+  .trip .nums b{font-size:19px;font-weight:700}
+  .trip .nums .u{opacity:.5;font-size:11px}
+  .bar{position:relative;height:7px;border-radius:4px;background:#ffffff1f;overflow:hidden;margin-top:7px}
+  .bar>i{position:absolute;inset:0 auto 0 0;width:0%;background:linear-gradient(90deg,#4fc3f7,#7ad7c0);
+    border-radius:4px;transition:width .18s linear}
+  #kmMarks{position:absolute;inset:0;pointer-events:none}
+  #kmMarks>s{position:absolute;top:0;bottom:0;width:1px;background:#ffffff55}
+  .nextstop{margin-top:6px;font-size:11px;opacity:.62}
+  .clockbox{text-align:right;flex:none}
+  .clockbox #clock{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+  .clockbox #weather{font-size:11px;opacity:.65;margin-top:2px}
+
+  .gauges{position:absolute;left:18px;bottom:18px;display:flex;flex-direction:column;gap:9px;width:150px}
+  .g{display:flex;align-items:center;gap:8px;font-size:11px}
+  .g label{width:26px;opacity:.6;flex:none}
+  .g .bar{flex:1;margin:0;height:6px}
+
+  .speedo{position:absolute;right:18px;bottom:76px;text-align:right;line-height:1}
+  .speedo b{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;
+    text-shadow:0 2px 10px #000a}
+  .speedo span{font-size:11px;opacity:.5;margin-left:4px}
+
+  .pads{position:absolute;right:18px;bottom:18px;display:flex;gap:10px;pointer-events:auto}
+  .pad{width:60px;height:60px;border-radius:50%;border:1px solid #ffffff33;background:#ffffff14;
+    color:#e9eef7;font-size:12px;font-family:inherit;backdrop-filter:blur(6px);
+    display:flex;align-items:center;justify-content:center;transition:.1s}
+  .pad.on{background:#ffffff40;transform:scale(.95)}
+  .pad.gas{border-color:#7ad7c080;color:#b8f0e0}
+  .pad.brake{border-color:#f0808090;color:#ffc0c0}
+
+  /* ---------- 弹窗 ---------- */
+  #modal{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;
+    padding:0 16px 26px;background:linear-gradient(#00000000,#00000066);z-index:20}
+  #modal.hide{display:none}
+  .card{width:100%;max-width:440px;background:#0f1524ee;border:1px solid #ffffff1f;
+    border-radius:16px;padding:16px 16px 12px;backdrop-filter:blur(14px);
+    box-shadow:0 18px 50px #000a;animation:up .22s ease-out}
+  @keyframes up{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+  .card .tag{display:inline-block;font-size:10px;letter-spacing:.14em;padding:3px 8px;border-radius:20px;
+    background:#7ad7c022;color:#8fe6cf;margin-bottom:9px}
+  .card h2{margin:0 0 7px;font-size:17px;font-weight:650}
+  .card p{margin:0 0 13px;font-size:12.5px;line-height:1.62;color:#c2cddd}
+  #mOpts{display:flex;flex-direction:column;gap:7px}
+  .opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+    background:#ffffff0d;border:1px solid #ffffff17;border-radius:11px;padding:10px 12px;
+    color:#e9eef7;font-family:inherit;font-size:13px;transition:.12s}
+  .opt:hover,.opt:active{background:#ffffff1c;border-color:#7ad7c066;transform:translateX(2px)}
+  .opt .k{flex:none;width:17px;height:17px;border-radius:5px;background:#ffffff1a;font-size:10px;
+    display:flex;align-items:center;justify-content:center;opacity:.75}
+  .opt .lb{flex:1}
+  .opt .nt{flex:none;font-size:10.5px;opacity:.55}
+
+  /* ---------- 遮罩页 ---------- */
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    padding:24px;background:#04060bd0;backdrop-filter:blur(3px);z-index:30}
+  .overlay.hide{display:none}
+  .tcard{width:100%;max-width:380px;text-align:center}
+  .tcard .sub{font-size:11px;letter-spacing:.3em;opacity:.55;margin-bottom:10px}
+  .tcard h1{margin:0;font-size:44px;letter-spacing:.1em;font-weight:700;
+    background:linear-gradient(120deg,#eaf3ff,#8fd7c8);-webkit-background-clip:text;
+    background-clip:text;color:transparent}
+  .tcard .route{margin:14px 0 6px;font-size:13px;opacity:.75}
+  .tcard .route b{font-size:15px}
+  .tcard p{font-size:12.5px;line-height:1.8;color:#a9b6c8;margin:12px 0 22px}
+  .btn{cursor:pointer;font-family:inherit;font-size:14px;padding:12px 34px;border-radius:12px;
+    border:1px solid #7ad7c066;background:#7ad7c01f;color:#d6fff4;transition:.15s}
+  .btn:hover{background:#7ad7c034;transform:translateY(-1px)}
+  .hint{margin-top:20px;font-size:11px;opacity:.4;line-height:1.9}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:18px 0 22px}
+  .stats div{background:#ffffff0d;border:1px solid #ffffff15;border-radius:10px;padding:10px 8px}
+  .stats span{display:block;font-size:10px;opacity:.5;margin-bottom:5px}
+  .stats b{font-size:15px;font-variant-numeric:tabular-nums}
+
+  #toast{position:absolute;left:50%;bottom:104px;transform:translate(-50%,8px);opacity:0;
+    background:#0f1524e6;border:1px solid #ffffff1f;border-radius:10px;padding:8px 14px;
+    font-size:12px;pointer-events:none;transition:.25s;z-index:25;max-width:80vw;text-align:center}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+
+  <div id="hud">
+    <div class="top">
+      <div class="trip">
+        <div class="nums"><b id="kmNow">0</b><span class="u">/ 1200 km</span></div>
+        <div class="bar"><i id="kmFill"></i><div id="kmMarks"></div></div>
+        <div class="nextstop" id="nextStop">成都 · 出发</div>
+      </div>
+      <div class="clockbox">
+        <div id="clock">06:00</div>
+        <div id="weather">晴</div>
+      </div>
+    </div>
+
+    <div class="gauges">
+      <div class="g"><label>体力</label><div class="bar"><i id="stFill"></i></div></div>
+      <div class="g"><label>油量</label><div class="bar"><i id="fuFill"></i></div></div>
+    </div>
+
+    <div class="speedo"><b id="spd">0</b><span>km/h</span></div>
+
+    <div class="pads">
+      <button class="pad brake" id="bBrake">刹车</button>
+      <button class="pad gas" id="bGas">油门</button>
+    </div>
+  </div>
+
+  <div id="modal" class="hide">
+    <div class="card">
+      <div class="tag" id="mTag">路况</div>
+      <h2 id="mTitle"></h2>
+      <p id="mText"></p>
+      <div id="mOpts"></div>
+    </div>
+  </div>
+
+  <div id="intro" class="overlay">
+    <div class="tcard">
+      <div class="sub">318 国 道 · 川 藏 线</div>
+      <h1>摩 旅</h1>
+      <div class="route">成都 → 拉萨 · <b>1200</b> km</div>
+      <p>一箱油，一副体力，一条往西的路。<br>垭口的风、夜里的雨、路边陌生的灯。</p>
+      <button class="btn" id="startBtn">出发</button>
+      <div class="hint">↑ / W 加速　↓ / S 刹车　1 2 3 选择<br>建议横屏游玩</div>
+    </div>
+  </div>
+
+  <div id="over" class="overlay hide">
+    <div class="tcard">
+      <div class="sub">旅 程 结 束</div>
+      <h1>拉 萨</h1>
+      <div class="stats">
+        <div><span>总里程</span><b id="rKm">0 km</b></div>
+        <div><span>总用时</span><b id="rTime">0</b></div>
+        <div><span>最高时速</span><b id="rSpd">0</b></div>
+        <div><span>照片</span><b id="rPhoto">0</b></div>
+      </div>
+      <p id="rNote"></p>
+      <button class="btn" id="againBtn">再走一次</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ 元素 ============ */
+const $ = s => document.querySelector(s);
+const stage = $('#stage');
+const cv = $('#cv');
+const ctx = cv.getContext('2d');
+
+/* ============ 工具 ============ */
+const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+function hex2rgb(h){
+  h=h.replace('#','');
+  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+}
+function mixHex(a,b,t){
+  const A=hex2rgb(a),B=hex2rgb(b);
+  return 'rgb('+Math.round(lerp(A[0],B[0],t))+','+Math.round(lerp(A[1],B[1],t))+','+Math.round(lerp(A[2],B[2],t))+')';
+}
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+/* ============ 常量 ============ */
+const TOTAL = 1200;        // 总里程 km
+const TSCALE = 2;          // 现实 1 秒 = 游戏 2 分钟
+const START_MIN = 6*60;    // 早上 6 点出发
+
+const LANDMARKS = [
+  {km:0,    name:'成都',   note:'平原 · 海拔 500m'},
+  {km:150,  name:'雅安',   note:'雨城 · 318 起点'},
+  {km:300,  name:'康定',   note:'情歌故里'},
+  {km:450,  name:'折多山', note:'垭口 4298m'},
+  {km:600,  name:'新都桥', note:'摄影天堂'},
+  {km:780,  name:'理塘',   note:'世界高城 4014m'},
+  {km:930,  name:'巴塘',   note:'金沙江畔'},
+  {km:1080, name:'然乌湖', note:'雪山倒影'},
+  {km:1200, name:'拉萨',   note:'终点'}
+];
+
+const WEATHER = {
+  clear:{name:'晴'},
+  cloud:{name:'多云'},
+  rain :{name:'雨'},
+  fog  :{name:'雾'}
+};
+
+const SKY = [
+  {h:0,    top:'#080c1c', bot:'#161b2e', stars:1},
+  {h:4.5,  top:'#0d1530', bot:'#243055', stars:.9},
+  {h:6,    top:'#3b5c96', bot:'#e9a178', stars:.25},
+  {h:7.5,  top:'#4a86d8', bot:'#b7dcfa', stars:0},
+  {h:12,   top:'#2f7de0', bot:'#cfeaff', stars:0},
+  {h:16,   top:'#3e83d6', bot:'#d6e8fb', stars:0},
+  {h:18.5, top:'#3a5fa0', bot:'#f2a878', stars:.1},
+  {h:20,   top:'#1b2140', bot:'#4a3556', stars:.6},
+  {h:22,   top:'#0a0f22', bot:'#171d33', stars:1},
+  {h:24,   top:'#080c1c', bot:'#161b2e', stars:1}
+];
+
+/* ============ 画布尺寸 ============ */
+let W=0,H=0;
+function resize(){
+  W = stage.clientWidth;
+  H = stage.clientHeight;
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  cv.width  = Math.round(W*dpr);
+  cv.height = Math.round(H*dpr);
+  cv.style.width  = W+'px';
+  cv.style.height = H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', resize);
+
+/* ============ 游戏状态 ============ */
+let G=null;
+let state='intro';
+let curEvent=null;
+let visT=0;        // 纯视觉时间
+let scroll=0;      // 场景滚动像素
+let wheelRot=0;
+const keys={gas:false, brake:false};
+
+function hour(){ return (G.minutes/60)%24; }
+function isNight(){ return hour()<6 || hour()>=20; }
+
+function resetGame(){
+  G = {
+    km:0, speed:0, fuel:100, stamina:100,
+    minutes: START_MIN,
+    weather:'clear', weatherLeft: rnd(50,100),
+    photos:0, topSpeed:0,
+    nextEvent: rnd(60,110),
+    nextMark: 1,
+    stalled: 0,
+    total: TOTAL
+  };
+  scroll=0; visT=0; wheelRot=0;
+  keys.gas=false; keys.brake=false;
+  curEvent=null;
+}
+
+/* ============ 音效（可选，WebAudio 引擎声） ============ */
+let audioOn=false, actx=null, osc=null, gain=null;
+function toggleAudio(){
+  try{
+    if(!actx){ actx = new (window.AudioContext||window.webkitAudioContext)(); }
+    if(audioOn){
+      audioOn=false;
+      if(gain) gain.gain.value=0;
+      return;
+    }
+    audioOn=true;
+    if(!osc){
+      osc = actx.createOscillator();
+      gain = actx.createGain();
+      osc.type='sawtooth';
+      osc.frequency.value=80;
+      gain.gain.value=0;
+      osc.connect(gain); gain.connect(actx.destination);
+      osc.start();
+    }
+    if(actx.state==='suspended') actx.resume();
+  }catch(e){ audioOn=false; }
+}
+function updateAudio(){
+  if(!audioOn||!osc) return;
+  const f = 46 + G.speed*1.5;
+  osc.frequency.setTargetAtTime(f, actx.currentTime, 0.08);
+  const vol = state==='riding' ? clamp(0.012 + G.speed*0.0016, 0, 0.06) : 0;
+  gain.gain.setTargetAtTime(vol, actx.currentTime, 0.15);
+}
+
+/* ============ 时间工具 ============ */
+function sleepTo(h){
+  const cur = (G.minutes/60)%24;
+  let add = (h - cur + 24)%24;
+  if(add < 0.5) add += 24;
+  G.minutes += add*60;
+}
+function clockStr(){
+  const m = Math.floor(G.minutes)%(24*60);
+  const hh = Math.floor(m/60), mm = Math.floor(m%60);
+  return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+}
+
+/* ============ 提示条 ============ */
+let toastTimer=0;
+function toast(msg){
+  const el=$('#toast');
+  el.textContent=msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'), 2400);
+}
+
+/* ============ 事件系统 ============ */
+function showEvent(ev){
+  if(state==='over'||state==='intro') return;
+  state='event';
+  curEvent=ev;
+  $('#mTag').textContent   = ev.tag||'路况';
+  $('#mTitle').textContent = ev.title;
+  $('#mText').textContent  = ev.text;
+  const box=$('#mOpts');
+  box.innerHTML='';
+  ev.opts.forEach((o,i)=>{
+    const b=document.createElement('button');
+    b.className='opt';
+    const k=document.createElement('span'); k.className='k'; k.textContent=String(i+1);
+    const lb=document.createElement('span'); lb.className='lb'; lb.textContent=o.label;
+    b.appendChild(k); b.appendChild(lb);
+    if(o.note){ const n=document.createElement('span'); n.className='nt'; n.textContent=o.note; b.appendChild(n); }
+    b.addEventListener('click', ()=>choose(i));
+    box.appendChild(b);
+  });
+  $('#modal').classList.remove('hide');
+}
+
+function choose(i){
+  if(state!=='event'||!curEvent) return;
+  const o = curEvent.opts[i];
+  if(!o) return;
+  const ev = curEvent;
+  curEvent=null;
+  $('#modal').classList.add('hide');
+  state='riding';
+  try{ if(o.run) o.run(); }catch(e){ console.error(e); }
+  updateHUD();
+  // 连锁检查（例如刚好走到下一个地标）
+  chainCheck();
+  void ev;
+}
+
+function chainCheck(){
+  if(state!=='riding') return;
+  if(checkLandmark()) return;
+  if(G.km >= G.nextEvent){
+    G.nextEvent = G.km + rnd(70,140)*(G.speed>85?0.65:1);
+    triggerRandomEvent();
+  }
+}
+
+/* ---- 地标 ---- */
+function checkLandmark(){
+  const lm = LANDMARKS[G.nextMark];
+  if(!lm) return false;
+  if(G.km < lm.km) return false;
+
+  G.nextMark++;
+  if(lm.km >= TOTAL){ finish(); return true; }
+
+  showEvent({
+    tag:'里程碑',
+    title:'到达 '+lm.name,
+    text: lm.note+' · 已骑行 '+Math.round(G.km)+' km',
+    opts:[
+      {label:'拍张照', note:'照片 +1 · 10 分钟', run:()=>{ G.photos++; G.stamina=clamp(G.stamina-3,0,100); G.minutes+=10; toast('按下快门。'); }},
+      {label:'歇一会儿', note:'体力 +18 · 40 分钟', run:()=>{ G.stamina=clamp(G.stamina+18,0,100); G.minutes+=40; }},
+      {label:'找旅店睡一觉', note:'体力回满 · 睡到早上 6 点', run:()=>{ G.stamina=100; sleepTo(6); toast('一觉睡到天亮。'); }}
+    ]
+  });
+  return true;
+}
+
+/* ---- 随机事件表 ---- */
+const EVENTS = [
+  {
+    id:'gas', w:()=>G.fuel<25 ? 26 : (G.fuel<55 ? 10 : 3), cond:()=>G.fuel<70,
+    build:()=>({
+      tag:'补给',
+      title:'路边加油站',
+      text:'铁皮棚子，几个油桶，一只趴着不动的黄狗。老板从躺椅上抬起头看你。',
+      opts:[
+        {label:'加满油箱', note:'油量回满 · 30 分钟', run:()=>{ G.fuel=100; G.minutes+=30; toast('油箱满了，心里也满了。'); }},
+        {label:'加一点就走', note:'油量 +25 · 12 分钟', run:()=>{ G.fuel=clamp(G.fuel+25,0,100); G.minutes+=12; }},
+        {label:'不加，继续骑', note:'', run:()=>{}}
+      ]
+    })
+  },
+  {
+    id:'food', w:4, cond:()=>G.stamina<90,
+    build:()=>({
+      tag:'补给',
+      title:'路边小馆',
+      text:'招牌上歪歪扭扭写着「川味小炒」，蒸汽从窗口冒出来，花椒的香味飘到路上。',
+      opts:[
+        {label:'吃碗热面', note:'体力 +30 · 25 分钟', run:()=>{ G.stamina=clamp(G.stamina+30,0,100); G.minutes+=25; toast('热汤下肚，人活过来了。'); }},
+        {label:'喝口水就走', note:'体力 +6 · 5 分钟', run:()=>{ G.stamina=clamp(G.stamina+6,0,100); G.minutes+=5; }}
+      ]
+    })
+  },
+  {
+    id:'inn', w:2, cond:()=>G.stamina<60 || isNight(),
+    build:()=>({
+      tag:'过夜',
+      title:'山脚下的客栈',
+      text:'院子里停着两辆外地牌照的摩托。老板娘在门口招手：「住一晚吧，明早好上山。」',
+      opts:[
+        {label:'住下', note:'体力回满 · 睡到早上 6 点', run:()=>{ G.stamina=100; sleepTo(6); toast('一觉睡到天亮。'); }},
+        {label:'不住，赶时间', note:'', run:()=>{ toast('你摇了摇头，拧动油门。'); }}
+      ]
+    })
+  },
+  {
+    id:'rain', w:3, cond:()=>true,
+    build:()=>({
+      tag:'天气',
+      title:'突如其来的雨',
+      text:'云压得很低，雨点砸在头盔上噼啪响。前方山口的雾正在往上爬。',
+      opts:[
+        {label:'停车穿雨衣', note:'体力 -4 · 15 分钟', run:()=>{ G.stamina=clamp(G.stamina-4,0,100); G.minutes+=15; G.weather='rain'; G.weatherLeft=80; toast('雨衣穿好了，继续。'); }},
+        {label:'硬扛着骑', note:'体力 -14', run:()=>{ G.stamina=clamp(G.stamina-14,0,100); G.weather='rain'; G.weatherLeft=80; toast('衣服湿透了，冷得发抖。'); }}
+      ]
+    })
+  },
+  {
+    id:'flat', w:2, cond:()=>G.km>20,
+    build:()=>({
+      tag:'故障',
+      title:'后轮漏气了',
+      text:'车身开始发飘，停下来一看——后轮软塌塌地贴在地上，扎进了一小截铁丝。',
+      opts:[
+        {label:'自己补胎', note:'体力 -10 · 50 分钟', run:()=>{ G.stamina=clamp(G.stamina-10,0,100); G.minutes+=50; toast('手上一片黑，胎补好了。'); }},
+        {label:'等路过的车帮忙', note:'80 分钟', run:()=>{ G.minutes+=80; toast('等了好久，终于有辆货车停下。'); }}
+      ]
+    })
+  },
+  {
+    id:'rider', w:3, cond:()=>true,
+    build:()=>({
+      tag:'路上',
+      title:'遇到一位老骑友',
+      text:'路边停着一辆贴满贴纸的老车，人坐在石头上抽烟。他说：「我这是第四次走这条路了。」',
+      opts:[
+        {label:'聊一会儿', note:'体力 +14 · 30 分钟', run:()=>{ G.stamina=clamp(G.stamina+14,0,100); G.minutes+=30; toast('他说：「慢一点，才看得见。」'); }},
+        {label:'点点头就走', note:'', run:()=>{}}
+      ]
+    })
+  },
+  {
+    id:'view', w:3, cond:()=>G.km>60,
+    build:()=>({
+      tag:'风景',
+      title:'一个好位置',
+      text:'路边有一小片空地，视线正好落在远处的雪线上。光刚好斜着打过来。',
+      opts:[
+        {label:'停下来拍照', note:'照片 +1 · -2 体力 · 15 分钟', run:()=>{ G.photos++; G.stamina=clamp(G.stamina-2,0,100); G.minutes+=15; toast('值得。'); }},
+        {label:'记在心里', note:'', run:()=>{}}
+      ]
+    })
+  },
+  {
+    id:'rock', w:2, cond:()=>G.km>300,
+    build:()=>({
+      tag:'路况',
+      title:'前方塌方',
+      text:'碎石铺了半边路，几个工人在雾里挥着铁锹。有人朝你摆手，示意等一等。',
+      opts:[
+        {label:'等清理完', note:'90 分钟', run:()=>{ G.minutes+=90; toast('路通了，谢谢师傅。'); }},
+        {label:'从边上挤过去', note:'体力 -16', run:()=>{ G.stamina=clamp(G.stamina-16,0,100); G.minutes+=15; toast('车轮打了一下滑，你稳住了。'); }}
+      ]
+    })
+  },
+  {
+    id:'pass', w:3, cond:()=>G.km>380,
+    build:()=>({
+      tag:'垭口',
+      title:'翻过一座垭口',
+      text:'风大得像有人在推你。经幡在头顶乱响，远处一层一层的山脊一直铺到天边。',
+      opts:[
+        {label:'加件衣服', note:'体力 +8 · 10 分钟', run:()=>{ G.stamina=clamp(G.stamina+8,0,100); G.minutes+=10; }},
+        {label:'拍经幡', note:'照片 +1 · 10 分钟', run:()=>{ G.photos++; G.minutes+=10; toast('风把经幡吹得笔直。'); }},
+        {label:'不停，直接下山', note:'', run:()=>{}}
+      ]
+    })
+  },
+  {
+    id:'night', w:3, cond:()=>isNight(),
+    build:()=>({
+      tag:'夜路',
+      title:'天黑了，还在路上',
+      text:'车灯前面只有一小块亮着的路。两侧什么都看不见，只有山风。',
+      opts:[
+        {label:'找地方露营', note:'体力 +45 · 睡到早上 6 点', run:()=>{ G.stamina=clamp(G.stamina+45,0,100); sleepTo(6); toast('钻进睡袋，星星很近。'); }},
+        {label:'开灯继续赶路', note:'体力 -12', run:()=>{ G.stamina=clamp(G.stamina-12,0,100); toast('你咬着牙往前。'); }}
+      ]
+    })
+  }
+];
+
+let lastEventId = '';
+function evWeight(e){
+  const w = typeof e.w==='function' ? e.w() : (e.w||1);
+  return (e.id===lastEventId) ? w*0.25 : w;
+}
+function triggerRandomEvent(){
+  const pool = EVENTS.filter(e=>!e.cond || e.cond());
+  if(!pool.length) return;
+  let total = 0;
+  for(const e of pool) total += evWeight(e);
+  let r = Math.random()*total;
+  let chosen = pool[pool.length-1];
+  for(let i=0;i<pool.length;i++){
+    r -= evWeight(pool[i]);
+    if(r<=0){ chosen=pool[i]; break; }
+  }
+  lastEventId = chosen.id;
+  showEvent(chosen.build());
+}
+
+/* ============ 更新 ============ */
+function maxSpeed(){
+  let m = 108;
+  m *= 0.55 + 0.45*clamp(G.stamina/100,0,1);
+  if(G.fuel<=0) m *= 0.08;
+  if(G.weather==='rain') m *= 0.78;
+  if(G.weather==='fog')  m *= 0.86;
+  if(isNight())          m *= 0.80;
+  return m;
+}
+
+function update(dt){
+  visT += dt;
+
+  if(state==='over' || state==='intro'){
+    // 静止画面，保留一点风的滚动
+    scroll += 6*dt;
+    return;
+  }
+  if(state!=='riding') return;
+
+  const dtv = dt*TSCALE;             // 游戏分钟
+  G.minutes += dtv;
+
+  /* 天气 */
+  G.weatherLeft -= dtv;
+  if(G.weatherLeft<=0){
+    G.weather = pick(['clear','clear','cloud','cloud','rain','fog']);
+    G.weatherLeft = rnd(50,130);
+    if(G.weather==='rain') toast('飘起雨来了。');
+  }
+
+  /* 速度 */
+  const ms = maxSpeed();
+  if(keys.gas)        G.speed += 27*dt;
+  else if(keys.brake) G.speed -= 85*dt;
+  else                G.speed -= 9*dt;
+
+  if(G.speed > ms) G.speed = Math.max(ms, G.speed - 50*dt);
+  G.speed = clamp(G.speed, 0, 165);
+  if(G.speed > G.topSpeed) G.topSpeed = G.speed;
+
+  /* 里程 & 滚动 */
+  const dkm = G.speed*(TSCALE/60)*dt;
+  G.km += dkm;
+  scroll += dkm*120;
+  wheelRot += G.speed*0.05*dt;
+
+  /* 油耗（速度越快，每公里越费） */
+  const use = 0.0043*Math.pow(G.speed,1.25)*dt;
+  G.fuel = clamp(G.fuel - use, 0, 100);
+
+  /* 体力 */
+  if(G.speed < 1){
+    G.stamina = clamp(G.stamina - 0.05*dt, 0, 100);
+  }else{
+    let sr = 0.30*(0.62 + G.speed/100);
+    if(isNight()) sr *= 1.5;
+    if(G.weather==='rain') sr *= 1.35;
+    if(G.weather==='fog')  sr *= 1.12;
+    G.stamina = clamp(G.stamina - sr*dt, 0, 100);
+  }
+
+  /* 油尽推车救援 */
+  if(G.fuel<=0){
+    G.stalled += dt;
+    if(G.stalled>20){
+      G.stalled=0;
+      showEvent({
+        tag:'救命',
+        title:'推着车走了好久',
+        text:'一辆货车在你身边停下，司机摇下车窗：「咋啦？给你抽点油。」',
+        opts:[
+          {label:'道谢，接油', note:'油量 +18 · 20 分钟', run:()=>{ G.fuel=clamp(G.fuel+18,0,100); G.minutes+=20; toast('够撑到下一个镇子了。'); }}
+        ]
+      });
+      return;
+    }
+  }else{
+    G.stalled = 0;
+  }
+
+  /* 体力耗尽 */
+  if(G.stamina<=0){
+    showEvent({
+      tag:'撑不住了',
+      title:'眼皮沉得抬不起来',
+      text:'你在路边停下车，靠着护栏坐了下去。风一吹，眼皮就再也睁不开了。',
+      opts:[
+        {label:'睡一会儿', note:'体力 +45 · 3 小时', run:()=>{ G.stamina=clamp(G.stamina+45,0,100); G.minutes+=180; toast('醒来时天已经变了颜色。'); }}
+      ]
+    });
+    return;
+  }
+
+  /* 终点 */
+  if(G.km >= TOTAL){ finish(); return; }
+
+  /* 地标 */
+  if(checkLandmark()) return;
+
+  /* 随机事件（骑得越快，越容易碰上事） */
+  if(G.km >= G.nextEvent){
+    G.nextEvent = G.km + rnd(70,140)*(G.speed>85?0.65:1);
+    triggerRandomEvent();
+    return;
+  }
+}
+
+/* ============ HUD ============ */
+const elKmNow=$('#kmNow'), elClock=$('#clock'), elWeather=$('#weather'),
+      elSpd=$('#spd'), elSt=$('#stFill'), elFu=$('#fuFill'),
+      elKmFill=$('#kmFill'), elNext=$('#nextStop');
+
+function updateHUD(){
+  if(!G) return;
+  elKmNow.textContent = Math.floor(G.km);
+  elClock.textContent = clockStr();
+  elWeather.textContent = WEATHER[G.weather].name + (isNight()?' · 夜':'');
+  elSpd.textContent = Math.round(G.speed);
+  elSt.style.width = G.stamina.toFixed(1)+'%';
+  elFu.style.width = G.fuel.toFixed(1)+'%';
+  elSt.style.background = G.stamina<25 ? 'linear-gradient(90deg,#e2574c,#f08070)' : 'linear-gradient(90deg,#4fd08b,#8fe6a8)';
+  elFu.style.background = G.fuel<20 ? 'linear-gradient(90deg,#e2574c,#f0a070)' : 'linear-gradient(90deg,#f0b429,#ffd97a)';
+  elKmFill.style.width = clamp(G.km/TOTAL*100,0,100)+'%';
+
+  const lm = LANDMARKS[Math.min(G.nextMark, LANDMARKS.length-1)];
+  if(lm && G.nextMark < LANDMARKS.length){
+    const d = Math.max(0, Math.round(lm.km - G.km));
+    elNext.textContent = '下一站 '+lm.name+' · 还有 '+d+' km';
+  }else{
+    elNext.textContent = '拉萨 · 到了';
+  }
+}
+
+/* ============ 天空 ============ */
+let skyCache=null, skyCacheH=-99;
+function skyAt(h){
+  if(skyCache && Math.abs(h-skyCacheH)<0.002) return skyCache;
+  let a=SKY[0], b=SKY[1];
+  for(let i=0;i<SKY.length-1;i++){
+    if(h>=SKY[i].h && h<=SKY[i+1].h){ a=SKY[i]; b=SKY[i+1]; break; }
+  }
+  const span = Math.max(0.001, b.h-a.h);
+  const t = clamp((h-a.h)/span,0,1);
+  skyCache = {
+    top: mixHex(a.top,b.top,t),
+    bot: mixHex(a.bot,b.bot,t),
+    stars: lerp(a.stars,b.stars,t)
+  };
+  skyCacheH = h;
+  return skyCache;
+}
+
+/* ============ 静态随机物 ============ */
+const stars = (function(){
+  const arr=[];
+  for(let i=0;i<90;i++) arr.push({x:Math.random(), y:Math.random()*0.62, r:rnd(0.6,1.7), p:rnd(0,6.28)});
+  return arr;
+})();
+const clouds = (function(){
+  const arr=[];
+  for(let i=0;i<7;i++) arr.push({x:Math.random(), y:rnd(0.08,0.34), s:rnd(0.6,1.5), v:rnd(0.002,0.008)});
+  return arr;
+})();
+const rainDrops = [];
+
+/* ============ 绘制 ============ */
+function drawStars(alpha){
+  for(const s of stars){
+    const tw = 0.6 + 0.4*Math.sin(visT*1.6 + s.p);
+    ctx.globalAlpha = alpha*tw*0.9;
+    ctx.fillStyle='#e8f2ff';
+    ctx.beginPath(); ctx.arc(s.x*W, s.y*H, s.r, 0, 6.2832); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawSunMoon(h){
+  if(h>5 && h<19){
+    const t=(h-5.5)/13.5;
+    const x = W*(0.08 + t*0.84);
+    const y = H*0.52 - Math.sin(t*Math.PI)*H*0.40;
+    const g=ctx.createRadialGradient(x,y,2,x,y,H*0.22);
+    g.addColorStop(0,'rgba(255,236,190,.95)');
+    g.addColorStop(0.18,'rgba(255,214,150,.45)');
+    g.addColorStop(1,'rgba(255,200,120,0)');
+    ctx.fillStyle=g;
+    ctx.fillRect(x-H*0.25, y-H*0.25, H*0.5, H*0.5);
+    ctx.fillStyle='#fff4d6';
+    ctx.beginPath(); ctx.arc(x,y,H*0.032,0,6.2832); ctx.fill();
+  }else{
+    const hh = h<5 ? h+24 : h;
+    const t = clamp((hh-19)/11,0,1);
+    const x = W*(0.88 - t*0.76);
+    const y = H*0.50 - Math.sin(t*Math.PI)*H*0.34;
+    ctx.fillStyle='#eaf0ff';
+    ctx.beginPath(); ctx.arc(x,y,H*0.026,0,6.2832); ctx.fill();
+    ctx.fillStyle='rgba(20,26,46,.55)';
+    ctx.beginPath(); ctx.arc(x+H*0.012, y-H*0.008, H*0.024,0,6.2832); ctx.fill();
+  }
+}
+
+function drawClouds(night){
+  ctx.save();
+  for(const c of clouds){
+    const x = ((c.x*W - scroll*0.02*c.v*60 + visT*8*c.v) % (W+400) + W+400) % (W+400) - 200;
+    const y = c.y*H;
+    const s = c.s*H*0.075;
+    ctx.globalAlpha = 0.10 + 0.28*(1-night);
+    ctx.fillStyle = night>0.5 ? '#3a4460' : '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(x, y, s*1.9, s*0.55, 0, 0, 6.2832);
+    ctx.ellipse(x+s*0.9, y-s*0.32, s*1.2, s*0.5, 0, 0, 6.2832);
+    ctx.ellipse(x-s*1.0, y-s*0.18, s*1.0, s*0.42, 0, 0, 6.2832);
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
+
+function ridge(baseY, amp, freq, speed, color, seed){
+  ctx.beginPath();
+  ctx.moveTo(0,H);
+  const off = scroll*speed + seed*1000;
+  for(let x=0;x<=W;x+=8){
+    const wx = x+off;
+    const y = baseY
+      - (Math.sin(wx*freq + seed)*0.62 + Math.sin(wx*freq*2.6 + seed*2.1)*0.38)*amp
+      - amp*0.45;
+    ctx.lineTo(x,y);
+  }
+  ctx.lineTo(W,H);
+  ctx.closePath();
+  ctx.fillStyle=color;
+  ctx.fill();
+}
+
+function drawPoles(y){
+  const sp = 240;
+  const off = scroll%sp;
+  for(let i=-1;i<W/sp+2;i++){
+    const x = i*sp - off;
+    ctx.strokeStyle='rgba(40,48,60,.85)';
+    ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x, y-H*0.10); ctx.stroke();
+    ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(x-7, y-H*0.095); ctx.lineTo(x+7, y-H*0.095); ctx.stroke();
+    // 电线
+    ctx.strokeStyle='rgba(40,48,60,.45)';
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(x, y-H*0.095);
+    ctx.quadraticCurveTo(x+sp/2, y-H*0.075, x+sp, y-H*0.095);
+    ctx.stroke();
+  }
+}
+
+function drawTrees(y){
+  const sp=300;
+  const off=(scroll*0.92)%sp;
+  for(let i=-1;i<W/sp+2;i++){
+    const x=i*sp-off;
+    const hh = H*0.075;
+    ctx.fillStyle='rgba(18,34,30,.9)';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x-hh*0.42, y);
+    ctx.lineTo(x, y-hh*1.5);
+    ctx.lineTo(x+hh*0.42, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function drawSign(x, y){
+  ctx.fillStyle='#5f6875';
+  ctx.fillRect(x-2, y-42, 4, 42);
+  ctx.fillStyle='#1f5fa8';
+  roundRect(x-31, y-62, 62, 23, 3);
+  ctx.fill();
+  ctx.strokeStyle='#ffffffcc';
+  ctx.lineWidth=1.4;
+  ctx.stroke();
+  ctx.fillStyle='#fff';
+  ctx.font='bold 12px system-ui,sans-serif';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillText('G318', x, y-50);
+  ctx.textAlign='left';
+  ctx.textBaseline='alphabetic';
+}
+
+function drawWheel(cx,cy,r){
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.strokeStyle='#1a1e26';
+  ctx.lineWidth=5;
+  ctx.beginPath(); ctx.arc(0,0,r-2,0,6.2832); ctx.stroke();
+  ctx.strokeStyle='#8e97a6';
+  ctx.lineWidth=1.4;
+  const a0 = wheelRot + (cx>0?0.6:0);
+  for(let i=0;i<6;i++){
+    const a = a0 + i*Math.PI/3;
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(Math.cos(a)*(r-3.5), Math.sin(a)*(r-3.5));
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawMoto(x, groundY, s, bounce){
+  ctx.save();
+  ctx.translate(x, groundY+bounce);
+  ctx.scale(s,s);
+
+  const R=15;
+
+  // 阴影
+  ctx.fillStyle='rgba(0,0,0,.30)';
+  ctx.beginPath(); ctx.ellipse(0,1,54,8,0,0,6.2832); ctx.fill();
+
+  // 轮子
+  drawWheel(-34,-R,R);
+  drawWheel(36,-R,R);
+
+  // 车架
+  ctx.strokeStyle='#8f99a8';
+  ctx.lineWidth=4; ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(-34,-R); ctx.lineTo(-8,-26); ctx.lineTo(20,-28); ctx.lineTo(36,-R);
+  ctx.stroke();
+
+  // 发动机
+  ctx.fillStyle='#4c5566';
+  roundRect(-10,-27,24,17,4); ctx.fill();
+
+  // 排气管
+  ctx.strokeStyle='#b9c1cf';
+  ctx.lineWidth=3.5;
+  ctx.beginPath(); ctx.moveTo(-2,-11); ctx.lineTo(-42,-8); ctx.stroke();
+
+  // 后行李
+  ctx.fillStyle='#3f6b8a';
+  roundRect(-46,-50,22,17,4); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.15)';
+  roundRect(-44,-48,18,5,2); ctx.fill();
+
+  // 座垫
+  ctx.fillStyle='#20242c';
+  roundRect(-28,-46,28,10,4); ctx.fill();
+
+  // 油箱
+  ctx.fillStyle='#e05a4f';
+  roundRect(-2,-46,32,17,7); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.28)';
+  roundRect(1,-43,13,6,3); ctx.fill();
+
+  // 前叉
+  ctx.strokeStyle='#aeb6c4';
+  ctx.lineWidth=4;
+  ctx.beginPath(); ctx.moveTo(31,-42); ctx.lineTo(36,-R); ctx.stroke();
+
+  // 车把
+  ctx.lineWidth=3.5;
+  ctx.beginPath(); ctx.moveTo(30,-44); ctx.lineTo(26,-54); ctx.lineTo(13,-56); ctx.stroke();
+
+  // 骑手
+  ctx.strokeStyle='#2b394b';
+  ctx.lineWidth=10; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-14,-48); ctx.lineTo(4,-66); ctx.stroke();      // 躯干
+  ctx.lineWidth=7;
+  ctx.beginPath(); ctx.moveTo(2,-62); ctx.lineTo(24,-54); ctx.stroke();       // 手臂
+  ctx.beginPath(); ctx.moveTo(-12,-48); ctx.lineTo(2,-36); ctx.lineTo(9,-27); ctx.stroke(); // 腿
+  ctx.strokeStyle='#3d4e64';
+  ctx.lineWidth=6;
+  ctx.beginPath(); ctx.moveTo(2,-36); ctx.lineTo(9,-27); ctx.stroke();
+
+  // 头盔
+  ctx.fillStyle='#e9eef7';
+  ctx.beginPath(); ctx.arc(10,-74,10,0,6.2832); ctx.fill();
+  ctx.fillStyle='#1c2430';
+  ctx.beginPath(); ctx.arc(15,-74,5.4,0,6.2832); ctx.fill();
+  ctx.fillStyle='#e05a4f';
+  roundRect(2,-85,10,4,2); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawRoad(y){
+  const g=ctx.createLinearGradient(0,y,0,H);
+  g.addColorStop(0,'#333a45');
+  g.addColorStop(0.22,'#262b34');
+  g.addColorStop(1,'#181c23');
+  ctx.fillStyle=g;
+  ctx.fillRect(0,y,W,H-y);
+
+  // 上边缘
+  ctx.fillStyle='#4a5260';
+  ctx.fillRect(0,y,W,2);
+
+  // 白色边线
+  ctx.fillStyle='rgba(235,240,248,.34)';
+  ctx.fillRect(0, y+(H-y)*0.13, W, 2);
+
+  // 中黄虚线
+  const dash=90, off=scroll%dash;
+  ctx.fillStyle='rgba(240,200,90,.55)';
+  const ly = y+(H-y)*0.46;
+  for(let x=-dash;x<W+dash;x+=dash){
+    ctx.fillRect(x-off, ly, dash*0.55, 3.5);
+  }
+
+  // 速度线
+  ctx.fillStyle='rgba(255,255,255,.07)';
+  const sp=200, o2=(scroll*1.4)%sp;
+  for(let i=-1;i<W/sp+2;i++){
+    const x=i*sp-o2;
+    ctx.fillRect(x, y+(H-y)*0.72, 70, 2);
+  }
+}
+
+function drawRainFX(dt){
+  if(G.weather!=='rain'){
+    if(rainDrops.length) rainDrops.length=0;
+    return;
+  }
+  const target = Math.round(clamp(W/7, 90, 220));
+  while(rainDrops.length<target){
+    rainDrops.push({x:Math.random()*W*1.3, y:Math.random()*H, sp:rnd(700,1100), len:rnd(9,22)});
+  }
+  while(rainDrops.length>target) rainDrops.pop();
+
+  ctx.strokeStyle='rgba(190,215,245,.45)';
+  ctx.lineWidth=1.2;
+  ctx.beginPath();
+  for(const d of rainDrops){
+    d.y += d.sp*dt;
+    d.x -= (d.sp*0.30 + G.speed*4.2)*dt;
+    if(d.y>H){ d.y=-20; d.x=Math.random()*W*1.3; }
+    if(d.x<-40){ d.x=W+40; d.y=Math.random()*H; }
+    ctx.moveTo(d.x,d.y);
+    ctx.lineTo(d.x-d.len*0.32, d.y+d.len);
+  }
+  ctx.stroke();
+}
+
+function drawFogFX(night){
+  if(G.weather!=='fog') return;
+  const g=ctx.createLinearGradient(0,H*0.5,0,H);
+  g.addColorStop(0,'rgba(200,214,232,0)');
+  g.addColorStop(0.55,'rgba(200,214,232,'+(0.16+0.14*(1-night))+')');
+  g.addColorStop(1,'rgba(200,214,232,'+(0.30+0.16*(1-night))+')');
+  ctx.fillStyle=g;
+  ctx.fillRect(0,H*0.5,W,H*0.5);
+}
+
+function render(dt){
+  if(!G) return;
+  const h = hour();
+  const sky = skyAt(h);
+  const night = sky.stars;
+  const roadY = H*0.755;
+
+  /* 天空 */
+  const g = ctx.createLinearGradient(0,0,0,roadY+10);
+  g.addColorStop(0, sky.top);
+  g.addColorStop(1, sky.bot);
+  ctx.fillStyle=g;
+  ctx.fillRect(0,0,W,roadY+12);
+
+  /* 星 */
+  if(sky.stars>0.02) drawStars(sky.stars);
+
+  /* 日月 */
+  drawSunMoon(h);
+
+  /* 云 */
+  drawClouds(night);
+
+  /* 山 */
+  const far  = mixHex('#6d8fae', '#121a2e', night*0.92);
+  const mid  = mixHex('#4a6f78', '#0e1622', night*0.92);
+  const near = mixHex('#2b4a45', '#0a1018', night*0.92);
+
+  ridge(roadY-H*0.055, H*0.115, 0.0022, 0.035, far, 1.4);
+  ridge(roadY-H*0.020, H*0.082, 0.0038, 0.075, mid, 3.1);
+  ridge(roadY+H*0.004, H*0.045, 0.0061, 0.20,  near, 5.7);
+
+  /* 电线杆 & 树 */
+  drawPoles(roadY-H*0.004);
+  drawTrees(roadY+H*0.006);
+
+  /* 路牌 */
+  const signSp=980, sOff=scroll%signSp;
+  for(let i=0;i<2;i++){
+    const x=i*signSp-sOff+W*0.55;
+    if(x>-100 && x<W+100) drawSign(x, roadY-H*0.004);
+  }
+
+  /* 路面 */
+  drawRoad(roadY);
+
+  /* 摩托车 */
+  const bikeScale = clamp(H/460, 0.62, 1.35);
+  const bounce = Math.sin(visT*22)*(0.6+G.speed*0.022) + (G.weather==='rain'?Math.sin(visT*40)*0.6:0);
+  drawMoto(W*0.30, roadY+H*0.075, bikeScale, bounce);
+
+  /* 夜色压暗 */
+  if(night>0.05){
+    ctx.fillStyle='rgba(8,12,26,'+(0.50*Math.min(1,night))+')';
+    ctx.fillRect(0,0,W,H);
+  }
+
+  /* 车灯 */
+  if(night>0.25){
+    const lx=W*0.30+bikeScale*46, ly=roadY+H*0.075-bikeScale*40;
+    const lg=ctx.createRadialGradient(lx,ly,4,lx,ly,H*0.42);
+    const a = 0.42*Math.min(1,night);
+    lg.addColorStop(0,'rgba(255,244,210,'+a+')');
+    lg.addColorStop(0.35,'rgba(255,238,190,'+(a*0.30)+')');
+    lg.addColorStop(1,'rgba(255,226,160,0)');
+    ctx.fillStyle=lg;
+    ctx.fillRect(0,0,W,H);
+  }
+
+  /* 天气 */
+  drawFogFX(night);
+  drawRainFX(dt);
+
+  /* 边缘暗角 */
+  const vg = ctx.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,H*0.95);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(0,0,0,.42)');
+  ctx.fillStyle=vg;
+  ctx.fillRect(0,0,W,H);
+}
+
+/* ============ 主循环 ============ */
+let last=0;
+function loop(now){
+  if(!last) last=now;
+  let dt = (now-last)/1000;
+  last = now;
+  dt = clamp(dt, 0, 0.05);
+
+  update(dt);
+  render(dt);
+  updateHUD();
+  updateAudio();
+
+  requestAnimationFrame(loop);
+}
+
+/* ============ 开始 / 结束 ============ */
+function startGame(){
+  resetGame();
+  state='riding';
+  $('#intro').classList.add('hide');
+  $('#over').classList.add('hide');
+  $('#modal').classList.add('hide');
+  curEvent=null;
+  updateHUD();
+  toast('出发。油箱是满的。');
+}
+
+function finish(){
+  state='over';
+  G.speed=0;
+  const mins = Math.max(0, G.minutes - START_MIN);
+  const hh = Math.floor(mins/60), mm = Math.round(mins%60);
+  $('#rKm').textContent    = Math.round(G.km)+' km';
+  $('#rTime').textContent  = hh+' 小时 '+(mm<10?'0':'')+mm+' 分';
+  $('#rSpd').textContent   = Math.round(G.topSpeed)+' km/h';
+  $('#rPhoto').textContent = G.photos+' 张';
+
+  let note = '你把车停在布达拉宫前面，熄了火。手还在抖。';
+  if(G.photos>=5) note = '相机里存着 '+G.photos+' 张照片，每一张都有一个你停下来的理由。';
+  else if(G.stamina>70) note = '到得比想象中轻松。也许下次可以走得更远。';
+  else if(G.stamina<20) note = '你几乎是爬下车的，但你还是到了。';
+  $('#rNote').textContent = note;
+
+  $('#modal').classList.add('hide');
+  $('#over').classList.remove('hide');
+}
+
+/* ============ 输入 ============ */
+window.addEventListener('keydown', e=>{
+  const k=e.key.toLowerCase();
+  if(k==='arrowup'||k==='w'){ keys.gas=true; e.preventDefault(); }
+  else if(k==='arrowdown'||k==='s'){ keys.brake=true; e.preventDefault(); }
+  else if(k==='m'){ toggleAudio(); toast(audioOn?'声音：开':'声音：关'); }
+  else if(k>='1'&&k<='3'){
+    if(state==='event') choose(parseInt(k,10)-1);
+  }
+  else if(k==='enter'||k===' '){
+    if(state==='intro'){ startGame(); e.preventDefault(); }
+    else if(state==='over'){ startGame(); e.preventDefault(); }
+  }
+});
+window.addEventListener('keyup', e=>{
+  const k=e.key.toLowerCase();
+  if(k==='arrowup'||k==='w') keys.gas=false;
+  if(k==='arrowdown'||k==='s') keys.brake=false;
+});
+
+function bindHold(el, on, off){
+  el.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    el.classList.add('on');
+    on();
+  });
+  ['pointerup','pointercancel','pointerleave','blur'].forEach(t=>{
+    el.addEventListener(t, ()=>{ el.classList.remove('on'); off(); });
+  });
+}
+bindHold($('#bGas'),   ()=>keys.gas=true,   ()=>keys.gas=false);
+bindHold($('#bBrake'), ()=>keys.brake=true, ()=>keys.brake=false);
+
+$('#startBtn').addEventListener('click', startGame);
+$('#againBtn').addEventListener('click', startGame);
+window.addEventListener('blur', ()=>{ keys.gas=false; keys.brake=false; });
+
+/* ============ 初始化 ============ */
+function buildMarks(){
+  const box=$('#kmMarks');
+  box.innerHTML='';
+  LANDMARKS.forEach(l=>{
+    if(l.km<=0||l.km>=TOTAL) return;
+    const s=document.createElement('s');
+    s.style.left=(l.km/TOTAL*100)+'%';
+    box.appendChild(s);
+  });
+}
+
+resize();
+buildMarks();
+resetGame();
+state='intro';
+updateHUD();
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

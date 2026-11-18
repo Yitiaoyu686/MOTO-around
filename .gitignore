@@ -1,0 +1,22 @@
+# ---------- 系统 / 编辑器 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---------- 依赖 / 构建（以后接入打包时用得上） ----------
+node_modules/
+dist/
+build/
+out/
+*.log
+npm-debug.log*
+
+# ---------- 临时文件 ----------
+tmp/
+temp/
+*.tmp
+*.bak
